@@ -1,7 +1,7 @@
 package com.crio.xmeme.controllers;
 
 import com.crio.xmeme.dtos.ResponseDTO;
-import com.crio.xmeme.exceptions.NullFieldException;
+import com.crio.xmeme.exceptions.BadRequestException;
 import com.crio.xmeme.exceptions.ResourceAlreadyExistsException;
 import com.crio.xmeme.exceptions.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -29,8 +29,8 @@ public class RestExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(new ResponseDTO(ex.getMessage()), HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(NullFieldException.class)
-    public ResponseEntity<ResponseDTO> handleNullFieldException(NullFieldException ex) {
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ResponseDTO> handleBadRequestException(BadRequestException ex) {
         return new ResponseEntity<>(new ResponseDTO(ex.getMessage()), HttpStatus.BAD_REQUEST);
     }
 }

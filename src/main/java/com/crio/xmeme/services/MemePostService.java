@@ -2,7 +2,7 @@ package com.crio.xmeme.services;
 
 import com.crio.xmeme.dtos.MemePostDTO;
 import com.crio.xmeme.entities.MemePost;
-import com.crio.xmeme.exceptions.NullFieldException;
+import com.crio.xmeme.exceptions.BadRequestException;
 import com.crio.xmeme.exceptions.ResourceAlreadyExistsException;
 import com.crio.xmeme.exceptions.ResourceNotFoundException;
 import com.crio.xmeme.repositories.MemePostRepository;
@@ -11,10 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class MemePostService {
@@ -65,7 +62,50 @@ public class MemePostService {
                     new Date());
             return memePostRepo.save(newMemePost).getId();
         } else {
-            throw new NullFieldException("Field(s) cannot be empty");
+            throw new BadRequestException("Field(s) cannot be empty");
         }
+    }
+
+    public void updateMemePost(Map<String, String> payload, Long id) {
+        Optional<MemePost> post = memePostRepo.findById(id);
+        if (!post.isPresent()) {
+            throw new ResourceNotFoundException("Post with the given id doesn't exist");
+        }
+        if (payload.isEmpty()) {
+            throw new BadRequestException("Request body can't be empty");
+        }
+        Set<String> allowedFieldsToBeUpdated = new HashSet<>(Arrays.asList("url", "caption"));
+        payload.forEach((key, value) -> {
+            if (allowedFieldsToBeUpdated.contains(key)) {
+                if (!value.equals("")) {
+                    if (key.equals("caption")) {
+                        post.get().setCaption(value);
+                    } else if (key.equals("url")) {
+                        post.get().setImageUrl(value);
+                    }
+                } else {
+                    throw new BadRequestException("Field(s) cannot be empty");
+                }
+            } else {
+                throw new BadRequestException("Some properties in the request can't be updated or there are invalid fields in the request body");
+            }
+        });
+        memePostRepo.findAll().forEach(memePost -> {
+            if (!memePost.getId().equals(id)
+                    && memePost.getPosterName().equals(post.get().getPosterName())
+                    && memePost.getCaption().equals(post.get().getCaption())
+                    && memePost.getImageUrl().equals(post.get().getImageUrl())) {
+                throw new ResourceAlreadyExistsException("Another post with same details already exists");
+            }
+        });
+        memePostRepo.save(post.get());
+    }
+
+    public void deleteMemePost(Long id) {
+        Optional<MemePost> post = memePostRepo.findById(id);
+        if (!post.isPresent()) {
+            throw new ResourceNotFoundException("Post with the given id doesn't exist");
+        }
+        memePostRepo.deleteById(id);
     }
 }

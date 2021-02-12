@@ -38,4 +38,17 @@ public class MemePostController {
         responseBody.put("id", String.valueOf(savedPostId));
         return new ResponseEntity<>(responseBody, HttpStatus.CREATED);
     }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateMemePost(@RequestBody  Map<String, String> payload,
+                                                      @PathVariable("id") Long id) {
+        memePostService.updateMemePost(payload, id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteMemePost(@PathVariable("id") Long id) {
+        memePostService.deleteMemePost(id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }
