@@ -22,89 +22,94 @@ public class MemePostService {
         this.memePostRepo = memePostRepo;
     }
 
+    private MemePost getMemePostByIdFromDb(Long id) {
+        Optional<MemePost> post = memePostRepo.findById(id);
+        if (!post.isPresent()) {
+            throw new ResourceNotFoundException();
+        }
+        return post.get();
+    }
+
+    private void checkForBadRequest(Map<String, String> payload, Set<String> allowedFields) {
+        if (payload.isEmpty()) {
+            throw new BadRequestException();
+        }
+        payload.forEach((key, value) -> {
+            if (!allowedFields.contains(key) || value.equals("")) {
+                throw new BadRequestException();
+            }
+        });
+    }
+
     public List<MemePostDTO> getAllMemePosts() {
         List<MemePostDTO> posts = new ArrayList<>();
-        memePostRepo.findAll(PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt")))
-                .forEach(post -> {
-            MemePostDTO memePostDTO = new MemePostDTO();
-            memePostDTO.setId(String.valueOf(post.getId()));
-            memePostDTO.setName(post.getPosterName());
-            memePostDTO.setUrl(post.getImageUrl());
-            memePostDTO.setCaption(post.getCaption());
-            posts.add(memePostDTO);
+        memePostRepo.findAll(PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "createdAt"))).forEach(post -> {
+            posts.add(new MemePostDTO(
+                    String.valueOf(post.getId()),
+                    post.getPosterName(),
+                    post.getImageUrl(),
+                    post.getCaption()
+            ));
         });
         return posts;
     }
 
     public MemePostDTO getMemePostById(Long id) {
-        Optional<MemePost> post = memePostRepo.findById(id);
-        if (!post.isPresent()) {
-            throw new ResourceNotFoundException("Post with the given id doesn't exist");
-        }
-        MemePostDTO memePostDTO = new MemePostDTO();
-        memePostDTO.setId(String.valueOf(post.get().getId()));
-        memePostDTO.setName(post.get().getPosterName());
-        memePostDTO.setUrl(post.get().getImageUrl());
-        memePostDTO.setCaption(post.get().getCaption());
-        return memePostDTO;
+        MemePost post = getMemePostByIdFromDb(id);
+        return new MemePostDTO(
+                String.valueOf(post.getId()),
+                post.getPosterName(),
+                post.getImageUrl(),
+                post.getCaption()
+        );
     }
 
-    public Long addMemePost(MemePostDTO memePostDTO) {
-        if (memePostDTO.getCaption() != null && memePostDTO.getUrl() != null && memePostDTO.getName() != null) {
-            memePostRepo.findAll().forEach(post -> {
-                if (post.getPosterName().equals(memePostDTO.getName())
-                        && post.getCaption().equals(memePostDTO.getCaption())
-                        && post.getImageUrl().equals(memePostDTO.getUrl())) {
-                    throw new ResourceAlreadyExistsException("Post already exists");
-                }
-            });
-            MemePost newMemePost = new MemePost(memePostDTO.getName(), memePostDTO.getUrl(), memePostDTO.getCaption(),
-                    new Date());
-            return memePostRepo.save(newMemePost).getId();
-        } else {
-            throw new BadRequestException("Field(s) cannot be empty");
+    public Map<String, String> addMemePost(Map<String, String> payload) {
+        Set<String> allowedFields = new HashSet<>(Arrays.asList("url", "name", "caption"));
+        checkForBadRequest(payload, allowedFields);
+        if (payload.size() != 3) {
+            throw new BadRequestException();
         }
+        memePostRepo.findAll().forEach(post -> {
+            if (post.getPosterName().equals(payload.get("name"))
+                    && post.getCaption().equals(payload.get("caption"))
+                    && post.getImageUrl().equals(payload.get("url"))) {
+                throw new ResourceAlreadyExistsException();
+            }
+        });
+        Long savedPostId = memePostRepo.save(new MemePost(
+                payload.get("name"),
+                payload.get("url"),
+                payload.get("caption"),
+                new Date()
+        )).getId();
+        return Collections.singletonMap("id", String.valueOf(savedPostId));
     }
 
     public void updateMemePost(Map<String, String> payload, Long id) {
-        Optional<MemePost> post = memePostRepo.findById(id);
-        if (!post.isPresent()) {
-            throw new ResourceNotFoundException("Post with the given id doesn't exist");
+        MemePost post = getMemePostByIdFromDb(id);
+        Set<String> allowedFields = new HashSet<>(Arrays.asList("url", "caption"));
+        checkForBadRequest(payload, allowedFields);
+        if (payload.containsKey("url")) {
+            post.setImageUrl(payload.get("url"));
         }
-        if (payload.isEmpty()) {
-            throw new BadRequestException("Request body can't be empty");
+        if (payload.containsKey("caption")) {
+            post.setCaption(payload.get("caption"));
         }
-        Set<String> allowedFieldsToBeUpdated = new HashSet<>(Arrays.asList("url", "caption"));
-        payload.forEach((key, value) -> {
-            if (allowedFieldsToBeUpdated.contains(key)) {
-                if (!value.equals("")) {
-                    if (key.equals("caption")) {
-                        post.get().setCaption(value);
-                    } else if (key.equals("url")) {
-                        post.get().setImageUrl(value);
-                    }
-                } else {
-                    throw new BadRequestException("Field(s) cannot be empty");
-                }
-            } else {
-                throw new BadRequestException("Some properties in the request can't be updated or there are invalid fields in the request body");
-            }
-        });
         memePostRepo.findAll().forEach(memePost -> {
             if (!memePost.getId().equals(id)
-                    && memePost.getPosterName().equals(post.get().getPosterName())
-                    && memePost.getCaption().equals(post.get().getCaption())
-                    && memePost.getImageUrl().equals(post.get().getImageUrl())) {
-                throw new ResourceAlreadyExistsException("Another post with same details already exists");
+                    && memePost.getPosterName().equals(post.getPosterName())
+                    && memePost.getCaption().equals(post.getCaption())
+                    && memePost.getImageUrl().equals(post.getImageUrl())) {
+                throw new ResourceAlreadyExistsException();
             }
         });
-        memePostRepo.save(post.get());
+        memePostRepo.save(post);
     }
 
     public void deleteMemePost(Long id) {
-        Optional<MemePost> post = memePostRepo.findById(id);
-        if (!post.isPresent()) {
-            throw new ResourceNotFoundException("Post with the given id doesn't exist");
+        if (!memePostRepo.findById(id).isPresent()) {
+            throw new ResourceNotFoundException();
         }
         memePostRepo.deleteById(id);
     }

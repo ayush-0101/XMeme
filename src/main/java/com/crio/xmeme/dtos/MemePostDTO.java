@@ -6,6 +6,13 @@ public class MemePostDTO {
     private String url;
     private String caption;
 
+    public MemePostDTO(String id, String name, String url, String caption) {
+        this.id = id;
+        this.name = name;
+        this.url = url;
+        this.caption = caption;
+    }
+
     public String getId() {
         return id;
     }

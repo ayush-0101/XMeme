@@ -7,7 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,16 +31,12 @@ public class MemePostController {
     }
 
     @PostMapping
-    public ResponseEntity<?> addMemePost(@RequestBody MemePostDTO memePostDTO) {
-        Long savedPostId = memePostService.addMemePost(memePostDTO);
-        Map<String, String> responseBody = new HashMap<>();
-        responseBody.put("id", String.valueOf(savedPostId));
-        return new ResponseEntity<>(responseBody, HttpStatus.CREATED);
+    public ResponseEntity<?> addMemePost(@RequestBody Map<String, String> payload) {
+        return new ResponseEntity<>(memePostService.addMemePost(payload), HttpStatus.CREATED);
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> updateMemePost(@RequestBody  Map<String, String> payload,
-                                                      @PathVariable("id") Long id) {
+    public ResponseEntity<?> updateMemePost(@RequestBody  Map<String, String> payload, @PathVariable("id") Long id) {
         memePostService.updateMemePost(payload, id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
